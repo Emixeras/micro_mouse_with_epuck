@@ -1,4 +1,3 @@
-
 from ePuck_Steuerung import *
 
 LABYRINTH_SIZE = 7
