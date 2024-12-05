@@ -8,7 +8,7 @@ MM_PRO_STEP = 0.13
 ABSTAND_RAEDER_IN_MM = 53
 VIERTEL_KREIS = 1/4 * math.pi * ABSTAND_RAEDER_IN_MM
 NEEDED_STEPS_FOR_90_DEGREE = VIERTEL_KREIS / MM_PRO_STEP
-SIZE_ONE_CELL_IN_MM = 1600
+SIZE_ONE_CELL_IN_MM = 900
 NEEDED_STEPS_FOR_MOVING_ONE_CELL = SIZE_ONE_CELL_IN_MM / MM_PRO_STEP
 
 
@@ -29,7 +29,7 @@ def set_motor_position(ser, left, right):
 
 def read_motor_position(ser):
     response = send_command(ser, str.join(["Q\r\n"]).encode("ascii"))
-    if response == "":
+    while response == "":
         read_motor_position(ser)
     response = str.split(response, ",")
     return response[1], response[2]
