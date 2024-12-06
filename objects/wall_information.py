@@ -1,5 +1,5 @@
 class WallInformation:
-    def __init__(self, front: bool, back: bool, left: bool, right: bool):
+    def __init__(self, front: bool=False, back: bool=False, left: bool=False, right: bool=False):
         self.front = front
         self.back = back
         self.left = left
