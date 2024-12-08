@@ -116,23 +116,51 @@ class floodfill():
                 self.mazewales[cell[0]][cell[1]-1].add(direction.DOWN)
 
     def searchNCellsLower(self, cellvalue: int)->direction:
-        ##todo
-        pass
+        cell = self.cellnow
+        if ((cell[0] + 1) < self.mazewidht):
+            if(self.mazevalue[cell[0]+1][cell[1]]< cellvalue):
+                return direction.RIGHT
+        if ((cell[1] + 1) < self.mazehight):
+            if(self.mazevalue[cell[0]][cell[1] + 1]< cellvalue):
+                return direction.DOWN
+        if((cell[0]-1)>0):
+            if(self.mazevalue[cell[0]-1][cell[1]]< cellvalue):
+                return direction.LEFT
+        if((cell[1]-1)>0):
+            if(self.mazevalue[cell[0]][cell[1] - 1]< cellvalue):
+                return direction.up
 
     def trainMaze(self):
         while(self.mazevalue[self.cellnow[0]][self.cellnow[1]]!=0):
             self.setWallsToCell()
             self.floodingmaze()
             cellvalue = self.mazevalue[self.cellnow[0]][self.cellnow[1]]
-            #TODO run to cell
+            newdirection = self.searchNCellsLower(cellvalue)
+            nowdirection = self.directionnow
+            tickrotate = newdirection - nowdirection
+            for i in range(abs(tickrotate)):
+                clockwise = True
+                if(tickrotate<0):
+                    clockwise = False
+                self.rotate(clockwise)
+            self.moveOneCell()
 
 
 
     def runMaze(self):
-        pass
+        self.cellnow = [0, 0]
+        self.directionnow = direction.RIGHT
+        while (self.mazevalue[self.cellnow[0]][self.cellnow[1]] != 0):
+            cellvalue = self.mazevalue[self.cellnow[0]][self.cellnow[1]]
+            newdirection = self.searchNCellsLower(cellvalue)
+            nowdirection = self.directionnow
+            tickrotate = newdirection - nowdirection
+            for i in range(abs(tickrotate)):
+                clockwise = True
+                if (tickrotate < 0):
+                    clockwise = False
+                self.rotate(clockwise)
+            self.moveOneCell()
 
-
-obj = floodfill(None, None, 4, 6, [[2,1]])
-obj.floodingmaze()
 
 
