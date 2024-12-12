@@ -23,7 +23,7 @@ def connect_to_epuck():
     try:
         print("Try to connect at", SERIAL_PORT)
         # Open the serial connection
-        ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=0.01)
+        ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=0.1)
         #needed as the first command always gives an error
         send_command(ser, b'b\r')
         print("Connected to e-puck at", SERIAL_PORT)
@@ -93,8 +93,6 @@ def read_accelerometer(ser):
     accelerometer = send_command(ser, "A".encode("ascii"))
     print(accelerometer)
 
-
-
 def read_walls(ser):
     sensors = read_sensors(ser)
     front = left = right = back = False
@@ -106,7 +104,7 @@ def read_walls(ser):
         right = True
     if int(sensors[4]) > WALL_THRESHHOLD_BACK and int(sensors[3]) > WALL_THRESHHOLD_BACK:
         back = True
-    return WallInformation(front, back, left, right)
+    return WallInformation(front, back, left, right), sensors
 
 def move_straight(ser):
     sensors = read_sensors(ser)
@@ -114,16 +112,41 @@ def move_straight(ser):
     left_sensor = sensors[6]
     difference_between_sensors = int(right_sensor) - int(left_sensor)
     print(difference_between_sensors)
-    threshhold = 250
+    threshhold = 500
     if abs(difference_between_sensors) > threshhold:
-        if difference_between_sensors > threshhold:
+        if difference_between_sensors > threshhold: # Linkskurve
             set_motor_speed(ser, 0, 200)
-        elif difference_between_sensors < -threshhold:
+        elif difference_between_sensors < -threshhold: # Rechtskurve
             set_motor_speed(ser, 200,0)
         return False
     if abs(difference_between_sensors) < threshhold:
         set_motor_speed(ser, 400,400)
         return True
+
+
+def move(ser):
+
+    walls, sensors = read_walls(ser)
+    right_sensor = sensors[1]
+    left_sensor = sensors[6]
+    difference_between_sensors = int(right_sensor) - int(left_sensor)
+    if walls.left and walls.right:
+        handle_left_and_right(difference_between_sensors, ser)
+
+
+def handle_left_and_right(difference_between_sensors, ser):
+    threshhold = 1000
+    while abs(difference_between_sensors) > threshhold:
+        if difference_between_sensors > threshhold:  # Linkskurve
+            set_motor_speed(ser, -20, 20)
+        elif difference_between_sensors < -threshhold:  # Rechtskurve
+            set_motor_speed(ser, 20, -20)
+        print(difference_between_sensors)
+        sensors = read_sensors(ser)
+        right_sensor = sensors[1]
+        left_sensor = sensors[6]
+        difference_between_sensors = int(right_sensor) - int(left_sensor)
+    set_motor_speed(ser, 200, 200)
 
 
 def send_command(ser, command, should_read_response = True):
