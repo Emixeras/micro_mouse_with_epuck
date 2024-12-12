@@ -126,7 +126,6 @@ def move_straight(ser):
 
 
 def move(ser):
-
     walls, sensors = read_walls(ser)
     right_sensor = sensors[1]
     left_sensor = sensors[6]
@@ -134,9 +133,11 @@ def move(ser):
     if walls.left and walls.right:
         handle_left_and_right(difference_between_sensors, ser)
     elif right_sensor < 500 and left_sensor > 500:
-        wall_on_right(ser, left_sensor, right_sensor)
+        wall_on_right(ser, right_sensor)
     elif left_sensor < 500 and right_sensor > 500:
-        wall_on_left(ser, left_sensor, right_sensor)
+        wall_on_left(ser, left_sensor)
+    else:
+        wall_none(ser)
 
 def handle_left_and_right(difference_between_sensors, ser):
     threshhold = 1000
@@ -158,13 +159,18 @@ def wall_on_right(ser, right_sensor):
     v_right = V_BASE + correction
     v_left = V_BASE - correction 
     set_motor_speed(ser, v_left, v_right)
-    
+
 def wall_on_left(ser, left_sensor):
     delta_sensor_threshhold = left_sensor - 1200
     correction = 0.5 * delta_sensor_threshhold
     v_right = V_BASE - correction
     v_left = V_BASE + correction 
     set_motor_speed(ser, v_left, v_right)
+
+def wall_none(ser):
+    set_motor_speed(ser, V_BASE, V_BASE)
+
+
 
 def send_command(ser, command, should_read_response = True):
     try:
