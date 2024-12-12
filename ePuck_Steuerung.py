@@ -56,16 +56,37 @@ def turn_right(ser, speed):
 def stop_motor(ser):
     set_motor_speed(ser, 0, 0)
 
-def turn90degree(ser, speed=500, clockwise=True):
+def turn90degree(ser, clockwise=True):
     set_motor_position(ser, 0, 0)
     left, right = read_motor_position(ser)
-    while abs(float(left)) < (NEEDED_STEPS_FOR_90_DEGREE -70): # 70 ist weil der Roboter noch nachdreht nachdem ausgelesen wurde
-        if clockwise:
-            turn_right(ser, speed)
-        else:
-            turn_left(ser, speed)
-        left, right = read_motor_position(ser)
-
+    theshhold_dynamic_speed = 100
+    tolerance = 5
+    if clockwise:
+        remaining_steps_left = NEEDED_STEPS_FOR_90_DEGREE - left
+        while remaining_steps_left > theshhold_dynamic_speed:
+            set_motor_speed(ser, V_BASE, -V_BASE)
+            left, right = read_motor_position(ser)
+            remaining_steps_left = NEEDED_STEPS_FOR_90_DEGREE - left
+        while remaining_steps_left > tolerance:
+            dynamic_speed = remaining_steps_left
+            set_motor_speed(ser, dynamic_speed, -dynamic_speed)
+            left, right = read_motor_position(ser)
+            remaining_steps_left = NEEDED_STEPS_FOR_90_DEGREE - left
+        set_motor_position(ser, 0, 0)
+    else:
+        remaining_steps_right = NEEDED_STEPS_FOR_90_DEGREE - right
+        while remaining_steps_left > theshhold_dynamic_speed:
+            set_motor_speed(ser, V_BASE, -V_BASE)
+            left, right = read_motor_position(ser)
+            remaining_steps_right = NEEDED_STEPS_FOR_90_DEGREE - right
+        while remaining_steps_right > tolerance:
+            dynamic_speed = remaining_steps_right
+            set_motor_speed(ser, dynamic_speed, -dynamic_speed)
+            left, right = read_motor_position(ser)
+            remaining_steps_right = NEEDED_STEPS_FOR_90_DEGREE - right
+        set_motor_position(ser, 0, 0)
+    
+    
     # reset
     stop_motor(ser)
     set_motor_position(ser, 0,0)
