@@ -18,6 +18,7 @@ WALL_THRESHHOLD = 2500
 WALL_THRESHHOLD_BACK = 1500
 time_start = 0
 time_end = 0
+V_BASE = 500    # Base velocity for motors
 
 def connect_to_epuck():
     try:
@@ -132,7 +133,10 @@ def move(ser):
     difference_between_sensors = int(right_sensor) - int(left_sensor)
     if walls.left and walls.right:
         handle_left_and_right(difference_between_sensors, ser)
-
+    elif right_sensor < 500 and left_sensor > 500:
+        wall_on_right(ser, left_sensor, right_sensor)
+    elif left_sensor < 500 and right_sensor > 500:
+        wall_on_left(ser, left_sensor, right_sensor)
 
 def handle_left_and_right(difference_between_sensors, ser):
     threshhold = 1000
@@ -148,6 +152,19 @@ def handle_left_and_right(difference_between_sensors, ser):
         difference_between_sensors = int(right_sensor) - int(left_sensor)
     set_motor_speed(ser, 200, 200)
 
+def wall_on_right(ser, right_sensor):
+    delta_sensor_threshhold = right_sensor - 1200
+    correction = 0.5 * delta_sensor_threshhold
+    v_right = V_BASE + correction
+    v_left = V_BASE - correction 
+    set_motor_speed(ser, v_left, v_right)
+    
+def wall_on_left(ser, left_sensor):
+    delta_sensor_threshhold = left_sensor - 1200
+    correction = 0.5 * delta_sensor_threshhold
+    v_right = V_BASE - correction
+    v_left = V_BASE + correction 
+    set_motor_speed(ser, v_left, v_right)
 
 def send_command(ser, command, should_read_response = True):
     try:
