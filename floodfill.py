@@ -14,8 +14,6 @@ class direction(Enum):
 class floodfill():
     serobj = {}
     targetcells = []
-    startcell = [0, 0]
-    startdirection = {}
 
     cellnow = [0, 0]
     directionnow = {}
@@ -25,9 +23,8 @@ class floodfill():
     mazehight = {}
     mazewidth = {}
 
-    def __init__(self, walldetectionob, width, hight, targetcells: [])-> None:
+    def __init__(self, width, hight, targetcells: [])-> None:
         self.serobj = connect_to_epuck()
-        self.startdirection = direction.RIGHT
         self.directionnow = direction.RIGHT
         self.mazehight = hight
         self.mazewidht = width
@@ -67,7 +64,6 @@ class floodfill():
                             if(self.mazevalue[i][j+1]>(roundcounter+1)):
                                 if(direction.DOWN not in self.mazewales[i][j]):
                                     self.mazevalue[i][j+1] = roundcounter+1
-        print("Done")
 
     def moveOneCell(self):
         moveOneCellStraight(self.serobj)
@@ -129,38 +125,26 @@ class floodfill():
         if((cell[1]-1)>0):
             if(self.mazevalue[cell[0]][cell[1] - 1]< cellvalue):
                 return direction.up
+    def moveInMaze(self):
+        cellvalue = self.mazevalue[self.cellnow[0]][self.cellnow[1]]
+        newdirection = self.searchNCellsLower(cellvalue)
+        nowdirection = self.directionnow
+        tickrotate = newdirection - nowdirection
+        for i in range(abs(tickrotate)):
+            clockwise = True
+            if (tickrotate < 0):
+                clockwise = False
+            self.rotate(clockwise)
+        self.moveOneCell()
 
     def trainMaze(self):
         while(self.mazevalue[self.cellnow[0]][self.cellnow[1]]!=0):
             self.setWallsToCell()
             self.floodingmaze()
-            cellvalue = self.mazevalue[self.cellnow[0]][self.cellnow[1]]
-            newdirection = self.searchNCellsLower(cellvalue)
-            nowdirection = self.directionnow
-            tickrotate = newdirection - nowdirection
-            for i in range(abs(tickrotate)):
-                clockwise = True
-                if(tickrotate<0):
-                    clockwise = False
-                self.rotate(clockwise)
-            self.moveOneCell()
-
-
+            self.moveInMaze()
 
     def runMaze(self):
         self.cellnow = [0, 0]
         self.directionnow = direction.RIGHT
         while (self.mazevalue[self.cellnow[0]][self.cellnow[1]] != 0):
-            cellvalue = self.mazevalue[self.cellnow[0]][self.cellnow[1]]
-            newdirection = self.searchNCellsLower(cellvalue)
-            nowdirection = self.directionnow
-            tickrotate = newdirection - nowdirection
-            for i in range(abs(tickrotate)):
-                clockwise = True
-                if (tickrotate < 0):
-                    clockwise = False
-                self.rotate(clockwise)
-            self.moveOneCell()
-
-
-
+            self.moveInMaze()
