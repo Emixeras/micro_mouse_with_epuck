@@ -4,6 +4,7 @@ import serial
 import math
 from time import sleep
 
+from objects.sensor_information import SensorInformation
 from objects.wall_information import WallInformation
 
 SERIAL_PORT = "COM8"  # Replace with your port (e.g., COM3 or /dev/ttyUSB0)
@@ -101,19 +102,19 @@ def move_one_cell_straight(ser):
     wall_left = False
     wall_right = False
     wall_change = False
-    sensors = read_sensors(ser)
-    if sensors[5] > 500:
+    sensors = SensorInformation(read_sensors(ser))
+    if sensors.left > 500:
         wall_left =True
-    if sensors[2] > 500:
+    if sensors.right > 500:
         wall_right = True
 
     while(True):
         # Frage Nach Wall Change
             # setze Needet Steps neu
         if not wall_change:
-            if (sensors[5] > 500 and not wall_left) or ( sensors[5] < 500 and wall_left):
+            if (sensors.left > 500 and not wall_left) or (sensors.left < 500 and wall_left):
                 wall_change = True
-            if (sensors[2] > 500 and not wall_right) or (sensors[2] < 500 and wall_right):
+            if (sensors.right > 500 and not wall_right) or (sensors.right < 500 and wall_right):
                 wall_change = True
             if wall_change:
                 set_motor_position(ser, 0,0)
@@ -132,23 +133,21 @@ def move_one_cell_straight(ser):
             #ändere speed für Needed Steps (v_base)
             dynamic_speed = min(10 * steps_to_go, V_BASE)
         # Fragee Nach frontwall
-        if sensors[0] > threshhold_front_distance:
+        if sensors.front_right > threshhold_front_distance:
             # gehe in Modus für wand annäherung
-            dynamic_speed = min((front_goal - sensors[0])/20,V_BASE)
+            dynamic_speed = min((front_goal - sensors.front_right)/20,V_BASE)
             #TODO gucken ob es probleme mit der Seitenwand gibt.
         #Brake falls nahe genung an der Wand
-        if(abs(sensors[0]-front_goal)<tolerance_front_distance):
+        if(abs(sensors.front_right-front_goal)<tolerance_front_distance):
             break
 
         #Rufe die Wall run Methoden auf mit Vbase
-        right_sensor = sensors[1]
-        left_sensor = sensors[6]
-        if right_sensor > 500 and left_sensor > 500:
-            wall_on_left_and_right(ser, sensors, right_sensor,dynamic_speed)
-        if right_sensor > 500 and left_sensor < 500:
-            wall_on_right(ser, sensors,dynamic_speed)
-        elif left_sensor > 500 and right_sensor < 500:
-            wall_on_left(ser, sensors, dynamic_speed)
+        if sensors.front_side_right > 500 and sensors.front_side_left > 500:
+            wall_on_left_and_right(ser, sensors.front_side_left, sensors.front_side_right, dynamic_speed)
+        if sensors.front_side_right > 500 and sensors.front_side_left < 500:
+            wall_on_right(ser, sensors.front_side_right, dynamic_speed)
+        elif sensors.front_side_left > 500 and sensors.front_side_right < 500:
+            wall_on_left(ser, sensors.front_side_left, dynamic_speed)
         else:
             wall_none(ser,dynamic_speed)
     # set motor 0 0 return
@@ -160,31 +159,29 @@ def read_sensors(ser):
         sensors_string = sensors_string.split(",")
         sleep(0.01)
     sensors_string[8] = sensors_string[8].replace('\r\n',"")
-    sensors_int = [int(sensor) for sensor in sensors_string]
-    return sensors_int[1:]
+    sensors_int = [int(sensor) for sensor in sensors_string[1:]]
+    return sensors_int
 
 def read_accelerometer(ser):
     accelerometer = send_command(ser, "A".encode("ascii"))
     print(accelerometer)
 
 def read_walls(ser):
-    sensors = read_sensors(ser)
+    sensors = SensorInformation(read_sensors(ser))
     front = left = right = back = False
-    if sensors[0] > WALL_THRESHHOLD and sensors[7] > WALL_THRESHHOLD:
+    if sensors.front_right > WALL_THRESHHOLD and sensors.front_left > WALL_THRESHHOLD:
         front = True
-    if sensors[5] > WALL_THRESHHOLD:
+    if sensors.left > WALL_THRESHHOLD:
         left = True
-    if sensors[2] > WALL_THRESHHOLD:
+    if sensors.right > WALL_THRESHHOLD:
         right = True
-    if sensors[4] > WALL_THRESHHOLD_BACK and sensors[3] > WALL_THRESHHOLD_BACK:
+    if sensors.back_left > WALL_THRESHHOLD_BACK and sensors.back_right > WALL_THRESHHOLD_BACK:
         back = True
     return WallInformation(front, back, left, right), sensors
 
 def move_straight(ser):
-    sensors = read_sensors(ser)
-    right_sensor = sensors[1]
-    left_sensor = sensors[6]
-    difference_between_sensors = right_sensor - left_sensor
+    sensors = SensorInformation(read_sensors(ser))
+    difference_between_sensors = sensors.front_side_right - sensors.front_side_left
     print(difference_between_sensors)
     threshhold = 500
     if abs(difference_between_sensors) > threshhold:
@@ -200,15 +197,14 @@ def move_straight(ser):
 
 def move(ser):
     walls, sensors = read_walls(ser)
-    right_sensor = sensors[1]
-    left_sensor = sensors[6]
-    difference_between_sensors = right_sensor - left_sensor
+
+    difference_between_sensors = sensors.front_side_right - sensors.front_side_left
     if walls.left and walls.right:
         handle_left_and_right(difference_between_sensors, ser)
-    if right_sensor > 500 and left_sensor < 500:
-        wall_on_right(ser, sensors)
-    elif left_sensor > 500 and right_sensor < 500:
-        wall_on_left(ser, sensors)
+    if sensors.front_side_right > 500 and sensors.front_side_left < 500:
+        wall_on_right(ser, sensors.front_side_right)
+    elif sensors.front_side_left > 500 and sensors.front_side_right < 500:
+        wall_on_left(ser, sensors.front_side_left)
     else:
         wall_none(ser)
 
@@ -220,49 +216,46 @@ def handle_left_and_right(difference_between_sensors, ser):
         elif difference_between_sensors < -threshhold:  # Rechtskurve
             set_motor_speed(ser, 20, -20)
         print(difference_between_sensors)
-        sensors = read_sensors(ser)
-        right_sensor = sensors[1]
-        left_sensor = sensors[6]
-        difference_between_sensors = right_sensor - left_sensor
+        sensors = SensorInformation(read_sensors(ser))
+
+        difference_between_sensors = sensors.front_side_right - sensors.front_side_left
     set_motor_speed(ser, 200, 200)
 
-def wall_on_right(ser, sensors, v_base = V_BASE):
-    right_sensor = sensors[1]
+def wall_on_right(ser, front_side_right_sensor, v_base = V_BASE):
     correction = 0
-    if right_sensor > 1000:
+    if front_side_right_sensor > 1000:
         correction = v_base * 0.07
-    if right_sensor < 1000:
+    if front_side_right_sensor < 1000:
         correction = -v_base * 0.07
-    if right_sensor > 1200:
+    if front_side_right_sensor > 1200:
         correction = v_base * 0.2
-    if right_sensor > 1500:
+    if front_side_right_sensor > 1500:
         correction = v_base * 0.8
-    if right_sensor < 900:
+    if front_side_right_sensor < 900:
         correction = -v_base * 0.2
     v_right = v_base + correction
     v_left = v_base - correction
     set_motor_speed(ser, int(v_left), int(v_right))
 
-def wall_on_left(ser, sensors, v_base = V_BASE):
-    left_sensor = sensors[1]
+def wall_on_left(ser, front_side_left_sensor, v_base = V_BASE):
     correction = 0
-    if left_sensor > 1000:
+    if front_side_left_sensor > 1000:
         correction = v_base * 0.07
-    if left_sensor < 1000:
+    if front_side_left_sensor < 1000:
         correction = -v_base * 0.07
-    if left_sensor > 1200:
+    if front_side_left_sensor > 1200:
         correction = v_base * 0.2
-    if left_sensor > 1500:
+    if front_side_left_sensor > 1500:
         correction = v_base * 0.8
-    if left_sensor < 900:
+    if front_side_left_sensor < 900:
         correction = -v_base * 0.2
     v_right = v_base - correction
     v_left = v_base + correction
     set_motor_speed(ser, int(v_left), int(v_right))
 
-def wall_on_left_and_right(ser, left_sensor, right_sensor, v_base = V_BASE):
+def wall_on_left_and_right(ser, front_side_left_sensor, front_side_right_sensor, v_base = V_BASE):
     correction = 0
-    diff_sensors = right_sensor - left_sensor
+    diff_sensors = front_side_right_sensor - front_side_left_sensor
     if diff_sensors > 0:
         correction = v_base * 0.07
     if diff_sensors < 0:
