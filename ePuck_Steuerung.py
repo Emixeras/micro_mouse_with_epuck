@@ -108,13 +108,13 @@ def move_one_cell_straight(ser):
 
 def move_accordingly_to_sensor_information(dynamic_speed, sensors, ser):
     if sensors.front_side_right > 500 and sensors.front_side_left > 500:
-        wall_on_left_and_right(ser, sensors.front_side_left, sensors.front_side_right, dynamic_speed)
+        handle_wall_on_left_and_right(ser, sensors.front_side_left, sensors.front_side_right, dynamic_speed)
     if sensors.front_side_right > 500 and sensors.front_side_left < 500:
-        wall_on_right(ser, sensors.front_side_right, dynamic_speed)
+        handle_wall_on_right(ser, sensors.front_side_right, dynamic_speed)
     elif sensors.front_side_left > 500 and sensors.front_side_right < 500:
-        wall_on_left(ser, sensors.front_side_left, dynamic_speed)
+        handle_wall_on_left(ser, sensors.front_side_left, dynamic_speed)
     else:
-        wall_none(ser, dynamic_speed)
+        handle_wall_none(ser, dynamic_speed)
 
 
 def close_enough_to_wall(sensors):
@@ -154,6 +154,7 @@ def move_straight(ser):
         return True
 
 
+#todo check if still necessary or can remove
 def move(ser):
     walls, sensors = read_walls(ser)
 
@@ -161,12 +162,13 @@ def move(ser):
     if walls.left and walls.right:
         handle_left_and_right(difference_between_sensors, ser)
     if sensors.front_side_right > 500 and sensors.front_side_left < 500:
-        wall_on_right(ser, sensors.front_side_right)
+        handle_wall_on_right(ser, sensors.front_side_right)
     elif sensors.front_side_left > 500 and sensors.front_side_right < 500:
-        wall_on_left(ser, sensors.front_side_left)
+        handle_wall_on_left(ser, sensors.front_side_left)
     else:
-        wall_none(ser)
+        handle_wall_none(ser)
 
+#todo check if still necessary or can remove because we have duplicate
 def handle_left_and_right(difference_between_sensors, ser):
     threshhold = 1000
     while abs(difference_between_sensors) > threshhold:
@@ -180,7 +182,7 @@ def handle_left_and_right(difference_between_sensors, ser):
         difference_between_sensors = sensors.front_side_right - sensors.front_side_left
     set_motor_speed(ser, 200, 200)
 
-def wall_on_right(ser, front_side_right_sensor, v_base = V_BASE):
+def handle_wall_on_right(ser, front_side_right_sensor, v_base = V_BASE):
     correction = 0
     if front_side_right_sensor > 1000:
         correction = v_base * 0.07
@@ -196,7 +198,7 @@ def wall_on_right(ser, front_side_right_sensor, v_base = V_BASE):
     v_left = v_base - correction
     set_motor_speed(ser, int(v_left), int(v_right))
 
-def wall_on_left(ser, front_side_left_sensor, v_base = V_BASE):
+def handle_wall_on_left(ser, front_side_left_sensor, v_base = V_BASE):
     correction = 0
     if front_side_left_sensor > 1000:
         correction = v_base * 0.07
@@ -212,7 +214,7 @@ def wall_on_left(ser, front_side_left_sensor, v_base = V_BASE):
     v_left = v_base + correction
     set_motor_speed(ser, int(v_left), int(v_right))
 
-def wall_on_left_and_right(ser, front_side_left_sensor, front_side_right_sensor, v_base = V_BASE):
+def handle_wall_on_left_and_right(ser, front_side_left_sensor, front_side_right_sensor, v_base = V_BASE):
     correction = 0
     diff_sensors = front_side_right_sensor - front_side_left_sensor
     if diff_sensors > 0:
@@ -231,7 +233,7 @@ def wall_on_left_and_right(ser, front_side_left_sensor, front_side_right_sensor,
     v_left = v_base - correction
     set_motor_speed(ser, int(v_left), int(v_right))
 
-def wall_none(ser, v_base = V_BASE):
+def handle_wall_none(ser, v_base = V_BASE):
     set_motor_speed(ser, int(v_base), int(v_base))
 
 
