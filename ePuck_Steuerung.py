@@ -4,12 +4,12 @@ import serial
 import math
 from time import sleep
 
-from micro_mouse_with_epuck.objects.wall_information import WallInformation
+from objects.wall_information import WallInformation
 
 SERIAL_PORT = "COM7"  # Replace with your port (e.g., COM3 or /dev/ttyUSB0)
 BAUD_RATE = 115200  # Standard baud rate for e-puck communication
 MM_PRO_STEP = 0.13
-ABSTAND_RAEDER_IN_MM = 53
+ABSTAND_RAEDER_IN_MM = 52.7
 VIERTEL_KREIS = 1/4 * math.pi * ABSTAND_RAEDER_IN_MM
 NEEDED_STEPS_FOR_90_DEGREE = VIERTEL_KREIS / MM_PRO_STEP
 SIZE_ONE_CELL_IN_MM = 90
@@ -24,7 +24,7 @@ def connect_to_epuck():
     try:
         print("Try to connect at", SERIAL_PORT)
         # Open the serial connection
-        ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=0.1)
+        ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=None)
         #needed as the first command always gives an error
         send_command(ser, b'b\r')
         print("Connected to e-puck at", SERIAL_PORT)
@@ -60,30 +60,30 @@ def turn90degree(ser, clockwise=True):
     set_motor_position(ser, 0, 0)
     left, right = read_motor_position(ser)
     theshhold_dynamic_speed = 100
-    tolerance = 5
+    tolerance = 1
     if clockwise:
-        remaining_steps_left = NEEDED_STEPS_FOR_90_DEGREE - left
+        remaining_steps_left = NEEDED_STEPS_FOR_90_DEGREE - float(left)
         while remaining_steps_left > theshhold_dynamic_speed:
             set_motor_speed(ser, V_BASE, -V_BASE)
             left, right = read_motor_position(ser)
-            remaining_steps_left = NEEDED_STEPS_FOR_90_DEGREE - left
-        while remaining_steps_left > tolerance:
-            dynamic_speed = remaining_steps_left
-            set_motor_speed(ser, dynamic_speed, -dynamic_speed)
+            remaining_steps_left = NEEDED_STEPS_FOR_90_DEGREE - float(left)
+        while abs(remaining_steps_left) > tolerance:
+            dynamic_speed = min(10*remaining_steps_left,V_BASE)
+            set_motor_speed(ser, int(dynamic_speed), -int(dynamic_speed))
             left, right = read_motor_position(ser)
-            remaining_steps_left = NEEDED_STEPS_FOR_90_DEGREE - left
+            remaining_steps_left = NEEDED_STEPS_FOR_90_DEGREE - float(left)
         set_motor_position(ser, 0, 0)
     else:
-        remaining_steps_right = NEEDED_STEPS_FOR_90_DEGREE - right
-        while remaining_steps_left > theshhold_dynamic_speed:
+        remaining_steps_right = NEEDED_STEPS_FOR_90_DEGREE - float(right)
+        while remaining_steps_right > theshhold_dynamic_speed:
             set_motor_speed(ser, V_BASE, -V_BASE)
             left, right = read_motor_position(ser)
-            remaining_steps_right = NEEDED_STEPS_FOR_90_DEGREE - right
-        while remaining_steps_right > tolerance:
-            dynamic_speed = remaining_steps_right
-            set_motor_speed(ser, dynamic_speed, -dynamic_speed)
+            remaining_steps_right = NEEDED_STEPS_FOR_90_DEGREE - float(right)
+        while abs(remaining_steps_right) > tolerance:
+            dynamic_speed = min(10*remaining_steps_right,V_BASE)
+            set_motor_speed(ser, int(dynamic_speed), -int(dynamic_speed))
             left, right = read_motor_position(ser)
-            remaining_steps_right = NEEDED_STEPS_FOR_90_DEGREE - right
+            remaining_steps_right = NEEDED_STEPS_FOR_90_DEGREE - float(right)
         set_motor_position(ser, 0, 0)
     
     
