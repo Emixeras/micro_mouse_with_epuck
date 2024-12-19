@@ -153,10 +153,10 @@ def move(ser):
     difference_between_sensors = int(right_sensor) - int(left_sensor)
     if walls.left and walls.right:
         handle_left_and_right(difference_between_sensors, ser)
-    elif right_sensor < 500 and left_sensor > 500:
-        wall_on_right(ser, right_sensor)
-    elif left_sensor < 500 and right_sensor > 500:
-        wall_on_left(ser, left_sensor)
+    if int(right_sensor) > 500 and int(left_sensor) < 500:
+        wall_on_right(ser, int(right_sensor))
+    elif int(left_sensor) > 500 and int(right_sensor) < 500:
+        wall_on_left(ser, int(left_sensor))
     else:
         wall_none(ser)
 
@@ -174,22 +174,59 @@ def handle_left_and_right(difference_between_sensors, ser):
         difference_between_sensors = int(right_sensor) - int(left_sensor)
     set_motor_speed(ser, 200, 200)
 
-def wall_on_right(ser, right_sensor):
-    delta_sensor_threshhold = right_sensor - 1200
-    correction = 0.5 * delta_sensor_threshhold
-    v_right = V_BASE + correction
-    v_left = V_BASE - correction 
-    set_motor_speed(ser, v_left, v_right)
+def wall_on_right(ser, right_sensor, v_base = V_BASE):
+    correction = 0
+    if(int(right_sensor) > 1000):
+        correction = v_base * 0.07
+    if(int(right_sensor) < 1000):
+        correction = -v_base * 0.07
+    if(int(right_sensor) > 1200):
+        correction = v_base * 0.2
+    if(int(right_sensor) > 1500):
+        correction = v_base * 0.8
+    if(int(right_sensor) < 900):
+        correction = -v_base * 0.2
+    v_right = v_base + correction
+    v_left = v_base - correction
+    set_motor_speed(ser, int(v_left), int(v_right))
 
-def wall_on_left(ser, left_sensor):
-    delta_sensor_threshhold = left_sensor - 1200
-    correction = 0.5 * delta_sensor_threshhold
-    v_right = V_BASE - correction
-    v_left = V_BASE + correction 
-    set_motor_speed(ser, v_left, v_right)
+def wall_on_left(ser, left_sensor, v_base = V_BASE):
+    correction = 0
+    if(int(left_sensor) > 1000):
+        correction = v_base * 0.07
+    if(int(left_sensor) < 1000):
+        correction = -v_base * 0.07
+    if(int(left_sensor) > 1200):
+        correction = v_base * 0.2
+    if(int(left_sensor) > 1500):
+        correction = v_base * 0.8
+    if(int(left_sensor) < 900):
+        correction = -v_base * 0.2
+    v_right = v_base - correction
+    v_left = v_base + correction
+    set_motor_speed(ser, int(v_left), int(v_right))
 
-def wall_none(ser):
-    set_motor_speed(ser, V_BASE, V_BASE)
+def wall_on_left_and_right(ser, left_sensor, right_sensor, v_base = V_BASE):
+    correction = 0
+    diff_sensors = int(right_sensor) - int(left_sensor)
+    if(diff_sensors > 0):
+        correction = v_base * 0.07
+    if(diff_sensors < 0):
+        correction = -v_base * 0.07
+    if(diff_sensors > 500):
+        correction = v_base * 0.20
+    if(diff_sensors < -500):
+        correction = -v_base * 0.20
+    if(diff_sensors > 1200):
+        correction = v_base * 0.8
+    if(correction < -1200):
+        correction = -v_base * 0.8
+    v_right = v_base + correction
+    v_left = v_base - correction
+    set_motor_speed(ser, int(v_left), int(v_right))
+
+def wall_none(ser, v_base = V_BASE):
+    set_motor_speed(ser, int(v_base), int(v_base))
 
 
 
