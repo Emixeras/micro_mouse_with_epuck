@@ -4,13 +4,13 @@ from ePuck_Communication import read_sensors, set_motor_position, read_motor_pos
 from objects.wall_information import read_walls
 from objects.sensor_information import SensorInformation
 
-FRONT_GOAL = 3000
+FRONT_GOAL = 2500
 
 TOLERANCE_FRONT_DISTANCE = 200
 
-THRESHHOLD_FRONT_DISTANCE = 100
+THRESHHOLD_FRONT_DISTANCE = 300
 
-THRESHOLD_DYNAMIC_SPEED = 100
+THRESHOLD_DYNAMIC_SPEED = 150
 
 TOLERANCE_STEPS_DISTANCE = 1
 
@@ -21,6 +21,8 @@ VIERTEL_KREIS = 1/4 * math.pi * ABSTAND_RAEDER_IN_MM
 NEEDED_STEPS_FOR_90_DEGREE = VIERTEL_KREIS / MM_PRO_STEP
 SIZE_ONE_CELL_IN_MM = 90
 NEEDED_STEPS_FOR_MOVING_ONE_CELL = SIZE_ONE_CELL_IN_MM / MM_PRO_STEP
+WALL_THICKNESS_IN_MM = 6
+STEPS_FOR_WALL_THICKNESS = WALL_THICKNESS_IN_MM/2 / MM_PRO_STEP
 
 time_start = 0
 time_end = 0
@@ -56,12 +58,12 @@ def turn90degree(ser, clockwise=True):
     else:
         remaining_steps_right = NEEDED_STEPS_FOR_90_DEGREE - float(right)
         while remaining_steps_right > threshhold_dynamic_speed:
-            set_motor_speed(ser, V_BASE, -V_BASE)
+            set_motor_speed(ser, -V_BASE, V_BASE)
             left, right = read_motor_position(ser)
             remaining_steps_right = NEEDED_STEPS_FOR_90_DEGREE - float(right)
         while abs(remaining_steps_right) > tolerance:
             dynamic_speed = min(10*remaining_steps_right,V_BASE)
-            set_motor_speed(ser, int(dynamic_speed), -int(dynamic_speed))
+            set_motor_speed(ser, -int(dynamic_speed), int(dynamic_speed))
             left, right = read_motor_position(ser)
             remaining_steps_right = NEEDED_STEPS_FOR_90_DEGREE - float(right)
         set_motor_position(ser, 0, 0)
@@ -88,7 +90,11 @@ def move_one_cell_straight(ser):
                 wall_change = True
             if wall_change:
                 set_motor_position(ser, 0, 0)
-                needed_stepps = NEEDED_STEPS_FOR_MOVING_ONE_CELL/2
+                if was_wall_added_on_side(walls, new_walls):
+                    needed_stepps = NEEDED_STEPS_FOR_MOVING_ONE_CELL/2 + STEPS_FOR_WALL_THICKNESS
+                else:
+                    needed_stepps = NEEDED_STEPS_FOR_MOVING_ONE_CELL/2 - STEPS_FOR_WALL_THICKNESS
+
 
         # Frage nach needet Stepps
         pos_left, pos_right = read_motor_position(ser)
@@ -103,13 +109,17 @@ def move_one_cell_straight(ser):
     # we are done so we stop the motors
     set_motor_speed(ser, 0, 0)
 
+def was_wall_added_on_side(walls, new_walls):
+    if (walls.right == False and new_walls.right == True) or (walls.left == False and new_walls.left == True):
+        return True
+    return False
 
 def move_accordingly_to_sensor_information(dynamic_speed, sensors, ser):
-    if sensors.front_side_right > 500 and sensors.front_side_left > 500:
+    if sensors.front_side_right > 800 and sensors.front_side_left > 800:
         handle_wall_on_left_and_right(ser, sensors.front_side_left, sensors.front_side_right, dynamic_speed)
-    if sensors.front_side_right > 500 and sensors.front_side_left < 500:
+    if sensors.front_side_right > 800 and sensors.front_side_left < 800:
         handle_wall_on_right(ser, sensors.front_side_right, dynamic_speed)
-    elif sensors.front_side_left > 500 and sensors.front_side_right < 500:
+    elif sensors.front_side_left > 800 and sensors.front_side_right < 800:
         handle_wall_on_left(ser, sensors.front_side_left, dynamic_speed)
     else:
         handle_wall_none(ser, dynamic_speed)
@@ -127,11 +137,12 @@ def get_dynamic_speed(sensors, steps_to_go):
     dynamic_speed = V_BASE
     if abs(steps_to_go) < THRESHOLD_DYNAMIC_SPEED:
         # ändere speed für Needed Steps (v_base)
-        dynamic_speed = min(10 * steps_to_go, V_BASE)
-    # Fragee Nach frontwall
-    if sensors.front_right > THRESHHOLD_FRONT_DISTANCE:
+        dynamic_speed = min(2 * steps_to_go, V_BASE)
+    # Frage Nach frontwall
+    front_sensors = (sensors.front_right + sensors.front_left)/2
+    if front_sensors > THRESHHOLD_FRONT_DISTANCE:
         # gehe in Modus für wand annäherung
-        dynamic_speed = min((FRONT_GOAL - sensors.front_right) / 20, V_BASE)
+        dynamic_speed = min((FRONT_GOAL - front_sensors) / 20, V_BASE)
         # TODO gucken ob es probleme mit der Seitenwand gibt.
     return dynamic_speed
 
@@ -188,8 +199,8 @@ def handle_wall_on_right(ser, front_side_right_sensor, v_base = V_BASE):
         correction = -v_base * 0.07
     if front_side_right_sensor > 1200:
         correction = v_base * 0.2
-    if front_side_right_sensor > 1500:
-        correction = v_base * 0.8
+    if front_side_right_sensor > 1800:
+        correction = v_base * 0.5
     if front_side_right_sensor < 900:
         correction = -v_base * 0.2
     v_right = v_base + correction
@@ -204,8 +215,8 @@ def handle_wall_on_left(ser, front_side_left_sensor, v_base = V_BASE):
         correction = -v_base * 0.07
     if front_side_left_sensor > 1200:
         correction = v_base * 0.2
-    if front_side_left_sensor > 1500:
-        correction = v_base * 0.8
+    if front_side_left_sensor > 1800:
+        correction = v_base * 0.5
     if front_side_left_sensor < 900:
         correction = -v_base * 0.2
     v_right = v_base - correction
