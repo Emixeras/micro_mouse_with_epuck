@@ -1,7 +1,8 @@
 from ePuck_Communication import read_sensors
-from ePuck_Steuerung import WALL_THRESHHOLD, WALL_THRESHHOLD_BACK
 from objects.sensor_information import SensorInformation
 
+WALL_THRESHHOLD = 2500
+WALL_THRESHHOLD_BACK = 1500
 
 class WallInformation:
     def __init__(self, front: bool=False, back: bool=False, left: bool=False, right: bool=False):
