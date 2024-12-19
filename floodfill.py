@@ -1,5 +1,6 @@
 from enum import Enum
-from objects.wall_information import WallInformation
+
+from ePuck_Communication import connect_to_epuck
 from ePuck_Steuerung import *
 from ePuck_Walldetection import *
 

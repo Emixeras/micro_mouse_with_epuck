@@ -1,6 +1,4 @@
-import time
-from time import sleep
-
+from ePuck_Communication import connect_to_epuck, read_accelerometer
 from ePuck_Steuerung import *
 
 LABYRINTH_SIZE = 7
