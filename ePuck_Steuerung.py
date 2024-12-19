@@ -1,8 +1,18 @@
 import math
 
-from ePuck_Communication import read_sensors, send_command
+from ePuck_Communication import read_sensors, set_motor_position, read_motor_position, set_motor_speed
 from objects.wall_information import read_walls
 from objects.sensor_information import SensorInformation
+
+FRONT_GOAL = 3000
+
+TOLERANCE_FRONT_DISTANCE = 200
+
+THRESHHOLD_FRONT_DISTANCE = 100
+
+THRESHOLD_DYNAMIC_SPEED = 100
+
+TOLERANCE_STEPS_DISTANCE = 1
 
 SERIAL_PORT = "COM8"  # Replace with your port (e.g., COM3 or /dev/ttyUSB0)
 BAUD_RATE = 115200  # Standard baud rate for e-puck communication
@@ -18,19 +28,6 @@ time_start = 0
 time_end = 0
 V_BASE = 500    # Base velocity for motors
 
-
-def set_motor_position(ser, left, right):
-    send_command(ser, "".join(["P,", str(left), ",", str(right), "\r\n"]).encode("ascii"))
-
-def read_motor_position(ser):
-    response = []
-    while len(response) != 3:
-        response = send_command(ser, "".join(["Q\r\n"]).encode("ascii"))
-        response = str.split(response, ",")
-    return response[1], response[2]
-
-def set_motor_speed(ser, left, right):
-    send_command(ser, "".join(["D,", str(left), ",", str(right), "\r\n"]).encode("ascii"))
 
 def turn_left(ser, speed):
     set_motor_speed(ser, -speed, speed)
@@ -74,71 +71,73 @@ def turn90degree(ser, clockwise=True):
     
     # reset
     stop_motor(ser)
-    set_motor_position(ser, 0,0)
+    set_motor_position(ser, 0, 0)
 
 def move_one_cell_straight(ser):
     needed_stepps = NEEDED_STEPS_FOR_MOVING_ONE_CELL
-    tolerance_stepps_distance = 1
-    threshhold_dynamic_speed = 100
-    threshhold_front_distance = 100
-    tolerance_front_distance = 200
-    front_goal = 3000
-    set_motor_position(ser, 0, 0)
-    wall_left = False
-    wall_right = False
+
     wall_change = False
-    sensors = SensorInformation(read_sensors(ser))
-    if sensors.left > 500:
-        wall_left =True
-    if sensors.right > 500:
-        wall_right = True
+
+    walls, sensors = read_walls(ser)
+    set_motor_position(ser, 0, 0)
 
     while(True):
+        new_walls, sensors = read_walls(ser)
         # Frage Nach Wall Change
             # setze Needet Steps neu
         if not wall_change:
-            if (sensors.left > 500 and not wall_left) or (sensors.left < 500 and wall_left):
-                wall_change = True
-            if (sensors.right > 500 and not wall_right) or (sensors.right < 500 and wall_right):
+            if new_walls.left != walls.left or new_walls.right != walls.right:
                 wall_change = True
             if wall_change:
-                set_motor_position(ser, 0,0)
+                set_motor_position(ser, 0, 0)
                 needed_stepps = NEEDED_STEPS_FOR_MOVING_ONE_CELL/2
 
         # Frage nach needet Stepps
         pos_left, pos_right = read_motor_position(ser)
         steps_to_go = needed_stepps - (int(pos_left)+int(pos_right))/2
-        #Brake wenn nötige Schritte gegangen sind
-        if(abs(steps_to_go)<tolerance_stepps_distance):
+
+        if have_moved_necessary_steps(steps_to_go) or close_enough_to_wall(sensors):
             break
 
-        #berechnungen für Speed
-        dynamic_speed = V_BASE
-        if abs(steps_to_go) < threshhold_dynamic_speed:
-            #ändere speed für Needed Steps (v_base)
-            dynamic_speed = min(10 * steps_to_go, V_BASE)
-        # Fragee Nach frontwall
-        if sensors.front_right > threshhold_front_distance:
-            # gehe in Modus für wand annäherung
-            dynamic_speed = min((front_goal - sensors.front_right)/20,V_BASE)
-            #TODO gucken ob es probleme mit der Seitenwand gibt.
-        #Brake falls nahe genung an der Wand
-        if(abs(sensors.front_right-front_goal)<tolerance_front_distance):
-            break
+        dynamic_speed = get_dynamic_speed(sensors, steps_to_go)
 
-        #Rufe die Wall run Methoden auf mit Vbase
-        if sensors.front_side_right > 500 and sensors.front_side_left > 500:
-            wall_on_left_and_right(ser, sensors.front_side_left, sensors.front_side_right, dynamic_speed)
-        if sensors.front_side_right > 500 and sensors.front_side_left < 500:
-            wall_on_right(ser, sensors.front_side_right, dynamic_speed)
-        elif sensors.front_side_left > 500 and sensors.front_side_right < 500:
-            wall_on_left(ser, sensors.front_side_left, dynamic_speed)
-        else:
-            wall_none(ser,dynamic_speed)
-    # set motor 0 0 return
+        move_accordingly_to_sensor_information(dynamic_speed, sensors, ser)
+    # we are done so we stop the motors
     set_motor_speed(ser, 0, 0)
 
 
+def move_accordingly_to_sensor_information(dynamic_speed, sensors, ser):
+    if sensors.front_side_right > 500 and sensors.front_side_left > 500:
+        wall_on_left_and_right(ser, sensors.front_side_left, sensors.front_side_right, dynamic_speed)
+    if sensors.front_side_right > 500 and sensors.front_side_left < 500:
+        wall_on_right(ser, sensors.front_side_right, dynamic_speed)
+    elif sensors.front_side_left > 500 and sensors.front_side_right < 500:
+        wall_on_left(ser, sensors.front_side_left, dynamic_speed)
+    else:
+        wall_none(ser, dynamic_speed)
+
+
+def close_enough_to_wall(sensors):
+    return abs(sensors.front_right - FRONT_GOAL) < TOLERANCE_FRONT_DISTANCE
+
+
+def have_moved_necessary_steps(steps_to_go):
+    return abs(steps_to_go) < TOLERANCE_STEPS_DISTANCE
+
+
+def get_dynamic_speed(sensors, steps_to_go):
+    dynamic_speed = V_BASE
+    if abs(steps_to_go) < THRESHOLD_DYNAMIC_SPEED:
+        # ändere speed für Needed Steps (v_base)
+        dynamic_speed = min(10 * steps_to_go, V_BASE)
+    # Fragee Nach frontwall
+    if sensors.front_right > THRESHHOLD_FRONT_DISTANCE:
+        # gehe in Modus für wand annäherung
+        dynamic_speed = min((FRONT_GOAL - sensors.front_right) / 20, V_BASE)
+        # TODO gucken ob es probleme mit der Seitenwand gibt.
+    return dynamic_speed
+
+#todo check if still necessary or can remove
 def move_straight(ser):
     sensors = SensorInformation(read_sensors(ser))
     difference_between_sensors = sensors.front_side_right - sensors.front_side_left
@@ -148,10 +147,10 @@ def move_straight(ser):
         if difference_between_sensors > threshhold: # Linkskurve
             set_motor_speed(ser, 0, 200)
         elif difference_between_sensors < -threshhold: # Rechtskurve
-            set_motor_speed(ser, 200,0)
+            set_motor_speed(ser, 200, 0)
         return False
     if abs(difference_between_sensors) < threshhold:
-        set_motor_speed(ser, 400,400)
+        set_motor_speed(ser, 400, 400)
         return True
 
 

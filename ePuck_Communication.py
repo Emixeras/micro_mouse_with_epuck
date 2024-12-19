@@ -43,3 +43,19 @@ def send_command(ser, command, should_read_response = True):
             return ser.readline().decode()
     except Exception as e:
         print("Failed to send command:", e)
+
+
+def set_motor_position(ser, left, right):
+    send_command(ser, "".join(["P,", str(left), ",", str(right), "\r\n"]).encode("ascii"))
+
+
+def read_motor_position(ser):
+    response = []
+    while len(response) != 3:
+        response = send_command(ser, "".join(["Q\r\n"]).encode("ascii"))
+        response = str.split(response, ",")
+    return response[1], response[2]
+
+
+def set_motor_speed(ser, left, right):
+    send_command(ser, "".join(["D,", str(left), ",", str(right), "\r\n"]).encode("ascii"))
