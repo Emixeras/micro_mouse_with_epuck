@@ -2,8 +2,8 @@ from time import sleep
 
 import serial
 
-from ePuck_Steuerung import SERIAL_PORT, BAUD_RATE
-
+SERIAL_PORT = "COM8"  # Replace with your port (e.g., COM3 or /dev/ttyUSB0)
+BAUD_RATE = 115200  # Standard baud rate for e-puck communication
 
 def connect_to_epuck():
     try:

@@ -14,8 +14,7 @@ THRESHOLD_DYNAMIC_SPEED = 100
 
 TOLERANCE_STEPS_DISTANCE = 1
 
-SERIAL_PORT = "COM8"  # Replace with your port (e.g., COM3 or /dev/ttyUSB0)
-BAUD_RATE = 115200  # Standard baud rate for e-puck communication
+
 MM_PRO_STEP = 0.13
 ABSTAND_RAEDER_IN_MM = 52.7
 VIERTEL_KREIS = 1/4 * math.pi * ABSTAND_RAEDER_IN_MM
@@ -81,7 +80,7 @@ def move_one_cell_straight(ser):
     walls, sensors = read_walls(ser)
     set_motor_position(ser, 0, 0)
 
-    while(True):
+    while True:
         new_walls, sensors = read_walls(ser)
         # Frage Nach Wall Change
             # setze Needet Steps neu
