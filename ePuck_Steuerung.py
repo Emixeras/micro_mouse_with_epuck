@@ -41,7 +41,6 @@ def read_motor_position(ser):
     while len(response) != 3:
         response = send_command(ser, "".join(["Q\r\n"]).encode("ascii"))
         response = str.split(response, ",")
-        sleep(0.01)
     return response[1], response[2]
 
 def set_motor_speed(ser, left, right):
@@ -91,17 +90,69 @@ def turn90degree(ser, clockwise=True):
     stop_motor(ser)
     set_motor_position(ser, 0,0)
 
-def move_one_cell_straight(ser, speed=1000):
+def move_one_cell_straight(ser):
+    needed_stepps = NEEDED_STEPS_FOR_MOVING_ONE_CELL
+    tolerance_stepps_distance = 1
+    theshhold_dynamic_speed = 100
+    theshhold_front_distance = 100
+    tolerance_front_distance = 200
+    front_goal = 3000
     set_motor_position(ser, 0, 0)
-    left, right = read_motor_position(ser)
-    while abs(float(left)) < (NEEDED_STEPS_FOR_MOVING_ONE_CELL - 70):  # 70 ist weil der Roboter noch nachdreht nachdem ausgelesen wurde
-        set_motor_speed(speed)
-        left, right = read_motor_position(ser)
+    wall_left = False
+    wall_right = False
+    wall_change = False
+    sensors = read_sensors()
+    if(int(sensors[5])>500):
+        wall_left =True
+    if(int(sensors[2])>500):
+        wall_right = True
 
-    # reset
-    stop_motor(ser)
-    set_motor_position(ser, 0, 0)
+    while(True):
+        # Frage Nach Wall Change
+            # setze Needet Steps neu
+        if(not wall_change):
+            if(((int(sensors[5])>500) and not wall_left) or((int(sensors[5])<500) and wall_left)):
+                wall_change = True
+            if (((int(sensors[2]) > 500) and not wall_right) or ((int(sensors[2]) < 500) and wall_right)):
+                wall_change = True
+            if(wall_change):
+                set_motor_position(ser, 0,0)
+                needed_stepps = NEEDED_STEPS_FOR_MOVING_ONE_CELL/2
 
+        # Frage nach needet Stepps
+        pos_left, pos_right = read_motor_position(ser)
+        steps_to_go = needed_stepps - (int(pos_left)+int(pos_right))/2
+        #Brake wenn nötige Schritte gegangen sind
+        if(abs(steps_to_go)<tolerance_stepps_distance):
+            break
+
+        #berechnungen für Speed
+        dynamic_speed = V_BASE
+        if(abs(steps_to_go) < theshhold_dynamic_speed):
+            #ändere speed für Needed Steps (v_base)
+            dynamic_speed = min(10 * steps_to_go, V_BASE)
+        # Fragee Nach frontwall
+        if(int(sensors[0])> theshhold_front_distance):
+            # gehe in Modus für wand annäherung
+            dynamic_speed = min((front_goal -int(sensors[0]))/20,V_BASE)
+            #TODO gucken ob es probleme mit der Seitenwand gibt.
+        #Brake falls nahe genung an der Wand
+        if(abs(int(sensors[0])-front_goal)<tolerance_front_distance):
+            break
+
+        #Rufe die Wall run Methoden auf mit Vbase
+        right_sensor = int(sensors[1])
+        left_sensor = int(sensors[6])
+        if int(right_sensor) > 500 and int(left_sensor) > 500:
+            wall_on_left_and_right(ser,left_sensor, right_sensor,dynamic_speed)
+        if int(right_sensor) > 500 and int(left_sensor) < 500:
+            wall_on_right(ser, int(right_sensor),dynamic_speed)
+        elif int(left_sensor) > 500 and int(right_sensor) < 500:
+            wall_on_left(ser, int(left_sensor),dynamic_speed)
+        else:
+            wall_none(ser,dynamic_speed)
+    # set motor 0 0 return
+    set_motor_speed(ser, 0, 0)
 def read_sensors(ser):
     sensors = []
     while len(sensors) !=9:
