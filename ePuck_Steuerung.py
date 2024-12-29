@@ -6,7 +6,7 @@ from objects.sensor_information import SensorInformation
 
 THRESHHOLD_WALL_GUIDANCE = 400
 
-FRONT_GOAL = 3000
+FRONT_GOAL = 2700
 
 MIN_SPEED = 150
 
@@ -75,6 +75,7 @@ def turn90degree(ser, clockwise=True):
     # reset
     stop_motor(ser)
     set_motor_position(ser, 0, 0)
+    print("Turned")
 
 def move_one_cell_straight(ser):
     needed_stepps = NEEDED_STEPS_FOR_MOVING_ONE_CELL
@@ -82,12 +83,12 @@ def move_one_cell_straight(ser):
     wall_change = False
 
     walls, sensors = read_walls(ser)
-    print(walls)
+    #print(walls)
     set_motor_position(ser, 0, 0)
 
     while True:
         new_walls, sensors = read_walls(ser)
-        print(new_walls)
+        #print(new_walls)
         print(sensors)
         # Frage Nach Wall Change
             # setze Needet Steps neu
@@ -98,9 +99,11 @@ def move_one_cell_straight(ser):
             if wall_change:
                 set_motor_position(ser, 0, 0)
                 if was_wall_added_on_side(walls, new_walls):
+                    print("wall was added")
                     needed_stepps = NEEDED_STEPS_FOR_MOVING_ONE_CELL/2 + STEPS_FOR_WALL_THICKNESS
                 else:
-                    needed_stepps = NEEDED_STEPS_FOR_MOVING_ONE_CELL/2 - STEPS_FOR_WALL_THICKNESS
+                    print("wall was removed")
+                    needed_stepps = NEEDED_STEPS_FOR_MOVING_ONE_CELL/2 - STEPS_FOR_WALL_THICKNESS * 4
 
 
         # Frage nach needet Stepps

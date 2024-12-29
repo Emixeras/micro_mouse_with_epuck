@@ -40,10 +40,10 @@ def read_accelerometer(ser):
 def send_command(ser, command, should_read_response = True):
     try:
         ser.write(command)
-        print("Command sent:", command)
+        #print("Command sent:", command)
         if should_read_response:
             res = ser.readline().decode()
-            print(time.time())
+            #print(time.time())
             return res
     except Exception as e:
         print("Failed to send command:", e)
