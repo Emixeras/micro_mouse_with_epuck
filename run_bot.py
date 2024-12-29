@@ -1,10 +1,58 @@
+from time import sleep
+
 from ePuck_Communication import connect_to_epuck, read_accelerometer
 from ePuck_Steuerung import *
+from micro_mouse_with_epuck.objects.sensor_information import SensorInformation
 
 LABYRINTH_SIZE = 7
 GOAL_X = 3
 GOAL_Y = 4
 
+def move_labyrinth(ser):
+    move_one_cell_straight(ser)
+    sleep(1)
+    move_one_cell_straight(ser)
+    sleep(1)
+    move_one_cell_straight(ser)
+    sleep(1)
+    move_one_cell_straight(ser)
+    turn90degree(ser)
+    sleep(1)
+    move_one_cell_straight(ser)
+    sleep(1)
+    move_one_cell_straight(ser)
+    sleep(1)
+    turn90degree(ser)
+    sleep(1)
+    move_one_cell_straight(ser)
+    sleep(1)
+    turn90degree(ser, False)
+    sleep(1)
+    move_one_cell_straight(ser)
+    sleep(1)
+    move_one_cell_straight(ser)
+    sleep(1)
+    move_one_cell_straight(ser)
+    sleep(1)
+    turn90degree(ser)
+    sleep(1)
+    move_one_cell_straight(ser)
+    sleep(1)
+    move_one_cell_straight(ser)
+    sleep(1)
+    move_one_cell_straight(ser)
+    sleep(1)
+    move_one_cell_straight(ser)
+    sleep(1)
+    turn90degree(ser)
+    sleep(1)
+    move_one_cell_straight(ser)
+    sleep(1)
+    move_one_cell_straight(ser)
+    sleep(1)
+    turn90degree(ser)
+    sleep(1)
+    move_one_cell_straight(ser)
 
 if __name__ == "__main__":
     ser = connect_to_epuck()
@@ -29,11 +77,15 @@ if __name__ == "__main__":
             #         break
             #       #  set_motor_speed(ser, "200", "200")
 
-            while True:
-                move_straight(ser)
-                read_accelerometer(ser)
+            #while True:
+                #print(sensors)
+                #move_one_cell_straight(ser)
+                #turn90degree(ser)
+            #move_one_cell_straight(ser)
+            move_labyrinth(ser)
         finally:
             # Close the connection
             ser.close()
             #print(time_elapsed)
             print("Connection closed.")
+

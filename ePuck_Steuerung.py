@@ -4,7 +4,11 @@ from ePuck_Communication import read_sensors, set_motor_position, read_motor_pos
 from objects.wall_information import read_walls
 from objects.sensor_information import SensorInformation
 
-FRONT_GOAL = 2500
+THRESHHOLD_WALL_GUIDANCE = 400
+
+FRONT_GOAL = 3000
+
+MIN_SPEED = 150
 
 TOLERANCE_FRONT_DISTANCE = 200
 
@@ -24,8 +28,7 @@ NEEDED_STEPS_FOR_MOVING_ONE_CELL = SIZE_ONE_CELL_IN_MM / MM_PRO_STEP
 WALL_THICKNESS_IN_MM = 6
 STEPS_FOR_WALL_THICKNESS = WALL_THICKNESS_IN_MM/2 / MM_PRO_STEP
 
-time_start = 0
-time_end = 0
+
 V_BASE = 500    # Base velocity for motors
 
 
@@ -79,15 +82,19 @@ def move_one_cell_straight(ser):
     wall_change = False
 
     walls, sensors = read_walls(ser)
+    print(walls)
     set_motor_position(ser, 0, 0)
 
     while True:
         new_walls, sensors = read_walls(ser)
+        print(new_walls)
+        print(sensors)
         # Frage Nach Wall Change
             # setze Needet Steps neu
         if not wall_change:
             if new_walls.left != walls.left or new_walls.right != walls.right:
                 wall_change = True
+                print("Wall changed")
             if wall_change:
                 set_motor_position(ser, 0, 0)
                 if was_wall_added_on_side(walls, new_walls):
@@ -113,15 +120,35 @@ def was_wall_added_on_side(walls, new_walls):
     if (walls.right == False and new_walls.right == True) or (walls.left == False and new_walls.left == True):
         return True
     return False
+def wall_right_according_to_sensors(sensors:SensorInformation):
+    return sensors.front_side_right > THRESHHOLD_WALL_GUIDANCE and sensors.front_side_left < THRESHHOLD_WALL_GUIDANCE
 
-def move_accordingly_to_sensor_information(dynamic_speed, sensors, ser):
-    if sensors.front_side_right > 800 and sensors.front_side_left > 800:
+def wall_left_according_to_sensors(sensors:SensorInformation):
+    return sensors.front_side_left > THRESHHOLD_WALL_GUIDANCE and sensors.front_side_right < THRESHHOLD_WALL_GUIDANCE
+
+def wall_left_and_right_according_to_sensors(sensors):
+    return sensors.front_side_right > THRESHHOLD_WALL_GUIDANCE and sensors.front_side_left > THRESHHOLD_WALL_GUIDANCE
+
+def wall_front_according_to_sensors(sensors):
+    sensors_front = (sensors.front_left + sensors.front_right) / 2
+    return sensors_front > THRESHHOLD_WALL_GUIDANCE
+
+
+def move_accordingly_to_sensor_information(dynamic_speed, sensors:SensorInformation, ser):
+    if wall_front_according_to_sensors(sensors):
+        handle_wall_none(ser, dynamic_speed)
+        print("Wand vorne erkannt")
+    elif wall_left_and_right_according_to_sensors(sensors):
         handle_wall_on_left_and_right(ser, sensors.front_side_left, sensors.front_side_right, dynamic_speed)
-    if sensors.front_side_right > 800 and sensors.front_side_left < 800:
+        print("links und rechts erkannt")
+    elif wall_right_according_to_sensors(sensors):
         handle_wall_on_right(ser, sensors.front_side_right, dynamic_speed)
-    elif sensors.front_side_left > 800 and sensors.front_side_right < 800:
+        print("Wand rechts erkannt")
+    elif wall_left_according_to_sensors(sensors):
         handle_wall_on_left(ser, sensors.front_side_left, dynamic_speed)
+        print("Wand links erkannt")
     else:
+        print("Wand gar nicht erkannt")
         handle_wall_none(ser, dynamic_speed)
 
 
@@ -144,6 +171,11 @@ def get_dynamic_speed(sensors, steps_to_go):
         # gehe in Modus für wand annäherung
         dynamic_speed = min((FRONT_GOAL - front_sensors) / 20, V_BASE)
         # TODO gucken ob es probleme mit der Seitenwand gibt.
+
+    if MIN_SPEED > dynamic_speed > 0:
+        return MIN_SPEED
+    elif -MIN_SPEED < dynamic_speed < 0:
+        return -MIN_SPEED
     return dynamic_speed
 
 #todo check if still necessary or can remove

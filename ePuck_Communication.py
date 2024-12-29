@@ -1,8 +1,10 @@
 from time import sleep
 
+import time
+
 import serial
 
-SERIAL_PORT = "COM8"  # Replace with your port (e.g., COM3 or /dev/ttyUSB0)
+SERIAL_PORT = "COM7"  # Replace with your port (e.g., COM3 or /dev/ttyUSB0)
 BAUD_RATE = 115200  # Standard baud rate for e-puck communication
 
 def connect_to_epuck():
@@ -40,7 +42,9 @@ def send_command(ser, command, should_read_response = True):
         ser.write(command)
         print("Command sent:", command)
         if should_read_response:
-            return ser.readline().decode()
+            res = ser.readline().decode()
+            print(time.time())
+            return res
     except Exception as e:
         print("Failed to send command:", e)
 
