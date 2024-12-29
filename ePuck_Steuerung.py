@@ -4,7 +4,7 @@ from ePuck_Communication import read_sensors, set_motor_position, read_motor_pos
 from objects.wall_information import read_walls
 from objects.sensor_information import SensorInformation
 
-THRESHHOLD_WALL_GUIDANCE = 400
+THRESHHOLD_WALL_GUIDANCE = 500
 
 FRONT_GOAL = 2700
 
@@ -27,10 +27,7 @@ SIZE_ONE_CELL_IN_MM = 90
 NEEDED_STEPS_FOR_MOVING_ONE_CELL = SIZE_ONE_CELL_IN_MM / MM_PRO_STEP
 WALL_THICKNESS_IN_MM = 6
 STEPS_FOR_WALL_THICKNESS = WALL_THICKNESS_IN_MM/2 / MM_PRO_STEP
-
-
 V_BASE = 500    # Base velocity for motors
-
 
 def turn_left(ser, speed):
     set_motor_speed(ser, -speed, speed)
@@ -106,7 +103,7 @@ def move_one_cell_straight(ser):
                     needed_stepps = NEEDED_STEPS_FOR_MOVING_ONE_CELL/2 - STEPS_FOR_WALL_THICKNESS * 4
 
 
-        # Frage nach needet Stepps
+        # Frage nach needet steps
         pos_left, pos_right = read_motor_position(ser)
         steps_to_go = needed_stepps - (int(pos_left)+int(pos_right))/2
 
@@ -123,6 +120,7 @@ def was_wall_added_on_side(walls, new_walls):
     if (walls.right == False and new_walls.right == True) or (walls.left == False and new_walls.left == True):
         return True
     return False
+
 def wall_right_according_to_sensors(sensors:SensorInformation):
     return sensors.front_side_right > THRESHHOLD_WALL_GUIDANCE and sensors.front_side_left < THRESHHOLD_WALL_GUIDANCE
 
