@@ -2,6 +2,7 @@ from time import sleep
 
 from ePuck_Communication import connect_to_epuck, read_accelerometer
 from ePuck_Steuerung import *
+from micro_mouse_with_epuck.floodfill import Floodfill, Cell
 from micro_mouse_with_epuck.objects.sensor_information import SensorInformation
 
 LABYRINTH_SIZE = 7
@@ -97,42 +98,20 @@ def move_labyrinth_backwards(ser):
     sleep(0.1)
     move_one_cell_straight(ser)
 
+
 if __name__ == "__main__":
+
     ser = connect_to_epuck()
     if ser:
         try:
-            # time_elapsed=0
-            # moving_straight=False
-            # currently_measuring=False
-            # time_start=0
-            # while True:
-            #     moving_straight = move_straight(ser)
-            #     if moving_straight and not currently_measuring:
-            #         time_start = time.time()
-            #         currently_measuring = True
-            #     if not moving_straight and currently_measuring:
-            #         time_end = time.time()
-            #         time_elapsed += time_end - time_start
-            #         currently_measuring = False
-            #     walls = read_walls(ser)
-            #     if walls.front:
-            #         set_motor_speed(ser, "0", "0")
-            #         break
-            #       #  set_motor_speed(ser, "200", "200")
+            targetCell1 = Cell(2,2)
+            targetCell2 = Cell(3,2)
+            targetCell3 = Cell(2,3)
+            targetCell4 = Cell(3,3)
+            floodfillAlg = Floodfill(ser,6,6, [targetCell1, targetCell2, targetCell3, targetCell4])
+            floodfillAlg.trainMaze()
+            floodfillAlg.runMaze()
 
-            #while True:
-                #print(sensors)
-                #move_one_cell_straight(ser)
-                #turn90degree(ser)
-            #move_one_cell_straight(ser)
-            for i in range (5):
-                move_labyrinth(ser)
-                turn90degree(ser)
-                turn90degree(ser)
-                sleep(2)
-                move_labyrinth_backwards(ser)
-                turn90degree(ser)
-                turn90degree(ser)
         finally:
             # Close the connection
             ser.close()

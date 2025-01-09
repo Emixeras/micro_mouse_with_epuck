@@ -16,7 +16,7 @@ class WallInformation:
         return f"WallInformation(front={self.front}, back={self.back}, left={self.left}, right={self.right})"
 
 
-def read_walls(ser):
+def read_walls(ser) -> WallInformation:
     sensors = SensorInformation(read_sensors(ser))
     front = left = right = back = False
     sensors_front = (sensors.front_left + sensors.front_right)/2

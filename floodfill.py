@@ -2,7 +2,6 @@ from enum import Enum
 
 from ePuck_Communication import connect_to_epuck
 from ePuck_Steuerung import *
-from ePuck_Walldetection import *
 
 
 class Cell:
@@ -10,147 +9,174 @@ class Cell:
         self.row = row
         self.column = column
 
-class direction(Enum):
+class Direction(Enum):
     RIGHT = 0
     DOWN = 1
     LEFT = 2
     UP = 3
 
 
-class floodfill():
+class Floodfill():
     serobj = {}
     targetcells = []
 
-    cellnow: Cell = Cell(0, 0)
-    directionnow = {}
+    cell_now: Cell = Cell(0, 0)
+    direction_now = {}
 
     mazewalls = []
     mazevalues = []
     mazeheight = {}
     mazewidth = {}
 
-    def __init__(self, width, height, targetcells: [Cell])-> None:
-        self.serobj = connect_to_epuck()
-        self.directionnow = direction.RIGHT
-        self.mazeheight = height
-        self.mazewidht = width
 
+    def __init__(self, serobj, width, height, targetcells: [Cell])-> None:
+        self.serobj = serobj
+        self.direction_now: Direction = Direction.RIGHT
+        self.mazeheight = height
+        self.mazewidth = width
+        self.targetcells = targetcells
+        self.targetcells_original = targetcells
+        self.origin = [Cell(0,0)]
         self.mazewalls = [[set() for x in range(height)] for x in range(width)]
         self.mazevalues = [[(height * width) for x in range(height)] for x in range(width)]
         for cell in targetcells:
-            #TODO was ist hier mit gemeint? Irgendwas stimmt hier nicht. Und was sind targetcells? hab die mal zu cells getyped, weil du hier auch auf index 0 und 1 für row und column zugreifst
             self.mazevalues[cell.row][cell.column] = 0
 
         # set walls up
         for i in range(width):
-            self.mazewalls[i][0].add(direction.UP)
-            self.mazewalls[i][-1].add(direction.DOWN)
+            self.mazewalls[0][i].add(Direction.UP)
+            self.mazewalls[-1][i].add(Direction.DOWN)
 
         for i in range(height):
-            self.mazewalls[0][i].add(direction.LEFT)
-            self.mazewalls[-1][i].add(direction.RIGHT)
+            self.mazewalls[i][0].add(Direction.LEFT)
+            self.mazewalls[i][-1].add(Direction.RIGHT)
 
     def floodingmaze(self):
-        for roundcounter in range(self.mazeheight * self.mazewidht):
-            for i in range(self.mazewidht):
+        self.mazevalues = [[(self.mazeheight * self.mazewidth) for x in range(self.mazeheight)] for x in range(self.mazewidth)]
+        for cell in self.targetcells:
+            self.mazevalues[cell.row][cell.column] = 0
+
+        for roundcounter in range(self.mazeheight * self.mazewidth):
+            for i in range(self.mazewidth):
                 for j in range(self.mazeheight):
                     if self.mazevalues[i][j] == roundcounter:
                         if (i - 1)>=0:
                             if self.mazevalues[i - 1][j]>(roundcounter + 1):
-                                if direction.LEFT not in self.mazewalls[i][j]:
+                                if Direction.UP not in self.mazewalls[i][j]:
                                     self.mazevalues[i - 1][j] = roundcounter + 1
                         if (j - 1)>=0:
                             if self.mazevalues[i][j - 1]>(roundcounter + 1):
-                                if direction.UP not in self.mazewalls[i][j]:
+                                if Direction.LEFT not in self.mazewalls[i][j]:
                                     self.mazevalues[i][j - 1] = roundcounter + 1
-                        if (i + 1)<self.mazewidht:
+                        if (i + 1)<self.mazewidth:
                             if self.mazevalues[i + 1][j]>(roundcounter + 1):
-                                if direction.RIGHT not in self.mazewalls[i][j]:
+                                if Direction.DOWN not in self.mazewalls[i][j]:
                                     self.mazevalues[i + 1][j] = roundcounter + 1
                         if (j + 1)<self.mazeheight:
                             if self.mazevalues[i][j + 1]>(roundcounter + 1):
-                                if direction.DOWN not in self.mazewalls[i][j]:
+                                if Direction.RIGHT not in self.mazewalls[i][j]:
                                     self.mazevalues[i][j + 1] = roundcounter + 1
 
     def moveOneCell(self):
         move_one_cell_straight(self.serobj)
-        if direction.RIGHT == self.directionnow:
-            self.cellnow.row = self.cellnow.row + 1
-        elif direction.LEFT == self.directionnow:
-            self.cellnow.row = self.cellnow.row- 1
-        elif direction.DOWN == self.directionnow:
-            self.cellnow.column = self.cellnow.column+1
-        elif direction.UP == self.directionnow:
-            self.cellnow.column = self.cellnow.column-1
+        if Direction.RIGHT == self.direction_now:
+            self.cell_now.column = self.cell_now.column + 1
+        elif Direction.LEFT == self.direction_now:
+            self.cell_now.column = self.cell_now.column - 1
+        elif Direction.DOWN == self.direction_now:
+            self.cell_now.row = self.cell_now.row + 1
+        elif Direction.UP == self.direction_now:
+            self.cell_now.row = self.cell_now.row - 1
 
 
     def rotate(self, colockwise = True):
         turn90degree(self.serobj, colockwise)
-        if(colockwise):
-            self.directionnow = (self.directionnow+1)%4
+        if colockwise:
+            self.direction_now = Direction((self.direction_now.value + 1) % 4)
         else:
-            self.directionnow = (self.directionnow-1)%4
+            self.direction_now = Direction((self.direction_now.value - 1) % 4)
 
     def setWallsToCell(self):
-        walls = getWallInformation(self.serobj)
+        walls, _ = read_walls(self.serobj)
         if walls.front:
-            self.mazewalls[self.cellnow.row][self.cellnow.column].add(self.directionnow)
-            self.setWallToNeighborCell(self.directionnow)
+            self.mazewalls[self.cell_now.row][self.cell_now.column].add(self.direction_now)
+            self.setWallToNeighborCell(self.direction_now)
         if walls.right:
-            self.mazewalls[self.cellnow.row][self.cellnow.column].add(self.directionnow + 1)
-            self.setWallToNeighborCell(self.directionnow)
+            self.mazewalls[self.cell_now.row][self.cell_now.column].add(Direction((self.direction_now.value + 1) % 4))
+            self.setWallToNeighborCell(Direction((self.direction_now.value + 1) % 4))
         if walls.left:
-            self.mazewalls[self.cellnow.row][self.cellnow.column].add(self.directionnow - 1)
+            self.mazewalls[self.cell_now.row][self.cell_now.column].add(Direction((self.direction_now.value - 1) % 4))
+            self.setWallToNeighborCell(Direction((self.direction_now.value - 1) % 4))
 
-    def setWallToNeighborCell(self, directionwall:direction):
-        if directionwall == direction.RIGHT:
-            if (self.cellnow.row + 1) < self.mazewidht:
-                self.mazewalls[self.cellnow.row + 1][self.cellnow.column].add(direction.LEFT)
-        elif directionwall == direction.DOWN:
-            if (self.cellnow[1] + 1) < self.mazeheight:
-                self.mazewalls[self.cellnow.row][self.cellnow.column + 1].add(direction.UP)
-        elif directionwall == direction.LEFT:
-            if (self.cellnow[0] - 1) > 0:
-                self.mazewalls[self.cellnow.row - 1][self.cellnow.column].add(direction.RIGHT)
-        elif directionwall == direction.UP:
-            if (self.cellnow[1] - 1) > 0:
-                self.mazewalls[self.cellnow.row][self.cellnow.column - 1].add(direction.DOWN)
 
-    def searchNCellsLower(self, cellvalue: int)->direction:
-        #TODO Check for walls between cells
-        if (self.cellnow.row + 1) < self.mazewidht:
-            if self.mazevalues[self.cellnow.row + 1][self.cellnow.column] < cellvalue:
-                return direction.RIGHT
-        if (self.cellnow.column + 1) < self.mazeheight:
-            if self.mazevalues[self.cellnow.row][self.cellnow.column + 1] < cellvalue:
-                return direction.DOWN
-        if (self.cellnow.row - 1) > 0:
-            if self.mazevalues[self.cellnow.row - 1][self.cellnow.column] < cellvalue:
-                return direction.LEFT
-        if (self.cellnow.column - 1)>0:
-            if self.mazevalues[self.cellnow.row][self.cellnow.column - 1] < cellvalue:
-                return direction.UP
+    def setWallToNeighborCell(self, directionwall:Direction):
+        if directionwall == Direction.RIGHT:
+            if (self.cell_now.column + 1) < self.mazewidth:
+                self.mazewalls[self.cell_now.row][self.cell_now.column+1].add(Direction.LEFT)
+        elif directionwall == Direction.DOWN:
+            if (self.cell_now.row + 1) < self.mazeheight:
+                self.mazewalls[self.cell_now.row+1][self.cell_now.column].add(Direction.UP)
+        elif directionwall == Direction.LEFT:
+            if (self.cell_now.column - 1) > 0:
+                self.mazewalls[self.cell_now.row][self.cell_now.column-1].add(Direction.RIGHT)
+        elif directionwall == Direction.UP:
+            if (self.cell_now.row - 1) > 0:
+                self.mazewalls[self.cell_now.row-1][self.cell_now.column].add(Direction.DOWN)
+
+    def searchNCellsLower(self, cellvalue: int)->Direction:
+        if (self.cell_now.column + 1) < self.mazewidth:
+            if self.mazevalues[self.cell_now.row ][self.cell_now.column + 1] < cellvalue:
+                if Direction.RIGHT not in self.mazewalls[self.cell_now.row][self.cell_now.column]:
+                    return Direction.RIGHT
+        if (self.cell_now.row + 1) < self.mazeheight:
+            if self.mazevalues[self.cell_now.row + 1][self.cell_now.column] < cellvalue:
+                if Direction.DOWN not in self.mazewalls[self.cell_now.row][self.cell_now.column]:
+                    return Direction.DOWN
+        if (self.cell_now.column - 1) >= 0:
+            if self.mazevalues[self.cell_now.row][self.cell_now.column - 1] < cellvalue:
+                if Direction.LEFT not in self.mazewalls[self.cell_now.row][self.cell_now.column]:
+                    return Direction.LEFT
+        if (self.cell_now.row - 1) >= 0:
+            if self.mazevalues[self.cell_now.row - 1][self.cell_now.column] < cellvalue:
+                if Direction.UP not in self.mazewalls[self.cell_now.row][self.cell_now.column]:
+                    return Direction.UP
 
     def moveInMaze(self):
-        cellvalue = self.mazevalues[self.cellnow.row][self.cellnow.column]
-        newdirection = self.searchNCellsLower(cellvalue)
-        nowdirection = self.directionnow
-        tickrotate = newdirection.value - nowdirection.value
-        for i in range(abs(tickrotate)):
+        cell_value = self.mazevalues[self.cell_now.row][self.cell_now.column]
+        new_direction = self.searchNCellsLower(cell_value)
+        now_direction = self.direction_now
+        tick_rotate = new_direction.value - now_direction.value
+        for i in range(abs(tick_rotate)):
             clockwise = True
-            if tickrotate < 0:
+            if tick_rotate < 0:
                 clockwise = False
             self.rotate(clockwise)
         self.moveOneCell()
 
     def trainMaze(self):
-        while self.mazevalues[self.cellnow.row][self.cellnow.column] != 0:
+        while self.mazevalues[self.cell_now.row][self.cell_now.column] != 0:
             self.setWallsToCell()
             self.floodingmaze()
             self.moveInMaze()
+        self.targetcells = self.origin
+        self.floodingmaze()
+        while self.mazevalues[self.cell_now.row][self.cell_now.column] != 0:
+            self.setWallsToCell()
+            self.floodingmaze()
+            self.moveInMaze()
+        tick_rotate = Direction.RIGHT.value - self.direction_now.value
+        for i in range(abs(tick_rotate)):
+            clockwise = True
+            if tick_rotate < 0:
+                clockwise = False
+            self.rotate(clockwise)
+
+        self.targetcells = self.targetcells_original
+        self.floodingmaze()
+        print("finished")
 
     def runMaze(self):
-        self.cellnow = Cell(0, 0)
-        self.directionnow = direction.RIGHT
-        while self.mazevalues[self.cellnow.row][self.cellnow.column] != 0:
+        self.cell_now = Cell(0, 0)
+        self.direction_now = Direction.RIGHT
+        while self.mazevalues[self.cell_now.row][self.cell_now.column] != 0:
             self.moveInMaze()
