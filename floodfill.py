@@ -76,6 +76,8 @@ class Floodfill():
                             if self.mazevalues[i][j + 1]>(roundcounter + 1):
                                 if Direction.RIGHT not in self.mazewalls[i][j]:
                                     self.mazevalues[i][j + 1] = roundcounter + 1
+        for row in self.mazevalues:
+            print(" | ".join(f"{value:2}" for value in row))
 
     def moveOneCell(self):
         move_one_cell_straight(self.serobj)
