@@ -1,7 +1,5 @@
 from time import sleep
 
-import time
-
 import serial
 
 SERIAL_PORT = "COM7"  # Replace with your port (e.g., COM3 or /dev/ttyUSB0)

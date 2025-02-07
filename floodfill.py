@@ -1,6 +1,5 @@
 from enum import Enum
 
-from ePuck_Communication import connect_to_epuck
 from ePuck_Steuerung import *
 
 
@@ -8,6 +7,9 @@ class Cell:
     def __init__(self, row: int, column: int):
         self.row = row
         self.column = column
+
+    def __str__(self):
+        return str(self.row) + ", " + str(self.column)
 
 class Direction(Enum):
     RIGHT = 0
